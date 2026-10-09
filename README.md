@@ -18,6 +18,12 @@ this project:
   BLE-capable machine (your laptop, a Raspberry Pi, ...). Handy for testing, for
   machines without ESPHome, and for grabbing the pump's MAC address.
 
+**No cloud, ever.** Everything is local — nothing talks to Hayward's servers:
+
+```
+Home Assistant ──Wi-Fi──▶ ESP32 ──BLE──▶ pump
+```
+
 Both need the pump's **`securityKey`** — a per-pump 16-byte key written to the
 pump when you set it up in the Hayward app. Bring your own key (see
 [Getting your securityKey](#2-get-your-securitykey)).
@@ -258,6 +264,18 @@ numeric and can be reverse-engineered from captured BLE traffic.
   type isn't confirmed.
 - `exclusive_ble: true` (opt-in, off by default) suspends Wi-Fi during each poll
   to give BLE the radio; see `esphome/README.md`.
+
+## Privacy & security
+
+- **No cloud, no telemetry.** The ESP32 talks only to your pump over BLE and to
+  Home Assistant over your Wi-Fi. Nothing is sent to Hayward (or anyone else).
+- **The `securityKey` stays yours.** Enter it in Home Assistant (stored on the
+  ESP32 in NVS), or provide it at build time via `pump_security_key` in the
+  gitignored `secrets.yaml`. It is never in the repo, and the default firmware is
+  key-free.
+- **ESPHome API/OTA are encrypted** with your per-install `api_key`
+  (`openssl rand -base64 32`); each install generates its own.
+- **Keep the key private** — anyone who has it can control the pump over BLE.
 
 ## License
 
