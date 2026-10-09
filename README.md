@@ -6,8 +6,10 @@
 > reverse-engineered for personal interoperability — use it at your own risk
 > (see [License](#license)).
 
-Control a Hayward OmniX filter pump over BLE and read its diagnostics — no phone
-app required. There are two ways to use this project:
+Control the Hayward OmniX filter pump **you own**, **locally** over BLE — no
+phone app, no cloud, and nothing leaves your network. Read its diagnostics and
+control it from Home Assistant or the command line. There are two ways to use
+this project:
 
 - **ESPHome + Home Assistant** (the main one): flash an ESP32 (e.g. an ESP32-C3)
   and HA gets an on/off switch, a speed control, and all the diagnostics the
