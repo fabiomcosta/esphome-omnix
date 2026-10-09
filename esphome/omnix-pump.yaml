@@ -1,0 +1,166 @@
+substitutions:
+  name: omnix-pump
+  friendly_name: OmniX Pump
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+
+esp32:
+  board: esp32-c3-devkitm-1
+  framework:
+    type: esp-idf
+
+logger:
+  level: DEBUG
+  hardware_uart: USB_SERIAL_JTAG
+
+api:
+  encryption:
+    key: !secret api_key
+
+ota:
+  - platform: esphome
+    # OTA uploads are authenticated with the api encryption key above.
+    # (A separate `password:` is the legacy form and wastes ~3.5 KB flash.)
+    encryption:
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  # Connect without scanning: the ESP32-C3 shares its radio with BLE and a
+  # full Wi-Fi scan gets starved while the pump link is active.
+  fast_connect: true
+  ap:
+    ssid: "OmniX-Pump Fallback"
+    password: !secret ap_password
+
+captive_portal:
+
+external_components:
+  - source:
+      type: local
+      path: components
+
+esp32_ble_tracker:
+  scan_parameters:
+    active: true
+
+omnix:
+  id: pump
+  # mac_address and security_key are optional fallbacks. Leave them out (or
+  # empty) and the device starts in discovery mode, then you pick/set them from
+  # Home Assistant. NOTE: a security_key here is compiled into the firmware
+  # (same as api_key), so leave `pump_security_key` empty if you'd rather enter
+  # it from Home Assistant only.
+  mac_address: !secret pump_mac_address
+  security_key: !secret pump_security_key
+  update_interval: 15s
+  # Experimental: suspend Wi-Fi while polling the pump (ESP32-C3 single-radio
+  # coexistence workaround). Off by default; see README.
+  # exclusive_ble: true
+  # ble_window: 20s
+
+# ---------------------------------------------------------------------------
+# Home Assistant entities, wired to the omnix hub above.
+# ---------------------------------------------------------------------------
+switch:
+  - platform: template
+    name: "Power"
+    # Don't act on boot: the default restore_mode (ALWAYS_OFF) makes the
+    # template switch call turn_off() at startup, which would pause the pump.
+    restore_mode: DISABLED
+    lambda: "return id(pump).is_running();"
+    turn_on_action:
+      - lambda: "id(pump).turn_on();"
+    turn_off_action:
+      - lambda: "id(pump).turn_off();"
+
+number:
+  - platform: template
+    name: "Speed"
+    unit_of_measurement: "%"
+    min_value: 0
+    max_value: 100
+    step: 5
+    lambda: "return id(pump).get_target_speed();"
+    set_action:
+      - lambda: "id(pump).set_speed((int) x);"
+    update_interval: 1s
+
+# Set the pump's MAC address and security key from Home Assistant.
+# The MAC text entity is pre-filled from the saved value; the key is masked.
+#
+# Finding your pump's MAC address:
+#   - In the Hayward OmniX app: open the pump's device/settings screen, which
+#     shows its Bluetooth address, or
+#   - In Home Assistant: read the "OmniX Devices Found" text sensor. It lists
+#     every nearby OmniX device as "MAC dev=.. stat=.. rssi=.."; copy your
+#     pump's MAC from there (leave "MAC Address" empty to list all devices).
+text:
+  - platform: template
+    name: "MAC Address"
+    mode: TEXT
+    lambda: "return id(pump).get_mac_address();"
+    set_action:
+      - lambda: "id(pump).set_mac_address(x);"
+    update_interval: 5s
+  - platform: template
+    name: "Security Key"
+    mode: PASSWORD
+    lambda: "return id(pump).get_key_masked();"
+    set_action:
+      - lambda: "id(pump).set_security_key(x);"
+    update_interval: 5s
+
+sensor:
+  - platform: template
+    name: "Power"
+    unit_of_measurement: "W"
+    device_class: power
+    state_class: measurement
+    accuracy_decimals: 0
+    lambda: "return id(pump).get_diag_power();"
+    update_interval: 5s
+  - platform: template
+    name: "Air Temp"
+    unit_of_measurement: "°F"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 0
+    lambda: "return id(pump).get_diag_air_temp();"
+    update_interval: 5s
+  - platform: template
+    name: "Drive Temp"
+    unit_of_measurement: "°F"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 0
+    lambda: "return id(pump).get_diag_drive_temp();"
+    update_interval: 5s
+
+text_sensor:
+  - platform: template
+    name: "Status"
+    lambda: "return id(pump).get_status();"
+    update_interval: 5s
+  - platform: template
+    name: "Speed"
+    lambda: "return id(pump).get_speed_display();"
+    update_interval: 5s
+  - platform: template
+    name: "OmniX Devices Found"
+    lambda: "return id(pump).get_seen_devices();"
+    update_interval: 10s
+  - platform: template
+    name: "Pump Drive Rev"
+    lambda: "return id(pump).get_diag_drive_rev();"
+    update_interval: 10s
+  - platform: template
+    name: "Radio Module Rev"
+    lambda: "return id(pump).get_diag_radio_rev();"
+    update_interval: 10s
+  - platform: template
+    name: "Display Rev"
+    lambda: "return id(pump).get_display_rev();"
+    update_interval: 10s

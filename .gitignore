@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# ESPHome
+.esphome-venv/
+esphome/.esphome/
+esphome/secrets.yaml
+
+# macOS
+.DS_Store
